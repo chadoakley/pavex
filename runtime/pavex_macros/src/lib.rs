@@ -8,7 +8,7 @@ use prebuilt::PrebuiltAnnotation;
 use proc_macro::TokenStream;
 use routes::{
     DeleteAnnotation, GetAnnotation, HeadAnnotation, OptionsAnnotation, PatchAnnotation,
-    PostAnnotation, PutAnnotation, RouteAnnotation,
+    PostAnnotation, PutAnnotation, QueryAnnotation, RouteAnnotation,
 };
 use utils::{fn_like::direct_entrypoint, type_like};
 
@@ -137,6 +137,11 @@ pub fn head(metadata: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn options(metadata: TokenStream, input: TokenStream) -> TokenStream {
     direct_entrypoint::<OptionsAnnotation>(metadata.into(), input.into())
+}
+
+#[proc_macro_attribute]
+pub fn query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    direct_entrypoint::<QueryAnnotation>(metadata.into(), input.into())
 }
 
 #[proc_macro_attribute]

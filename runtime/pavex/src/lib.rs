@@ -1767,6 +1767,14 @@ http_method_macro_doc!(
     "/users/{id}",
     "Put user logic"
 );
+http_method_macro_doc!(
+    "QUERY",
+    query,
+    search_users,
+    SEARCH_USERS,
+    "/users/search",
+    "Search users logic"
+);
 
 /// Define a [fallback handler](https://pavex.dev/docs/guide/routing/).
 ///
