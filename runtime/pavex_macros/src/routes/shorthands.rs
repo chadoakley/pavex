@@ -55,6 +55,7 @@ enum Method {
     Patch,
     Post,
     Put,
+    Query,
 }
 
 impl Method {
@@ -68,6 +69,7 @@ impl Method {
             Patch => "PATCH",
             Post => "POST",
             Put => "PUT",
+            Query => "QUERY",
         }
     }
 }
@@ -108,6 +110,7 @@ method_annotation!(Put);
 method_annotation!(Delete);
 method_annotation!(Head);
 method_annotation!(Options);
+method_annotation!(Query);
 
 fn method_shorthand(
     impl_: Option<ImplContext>,
