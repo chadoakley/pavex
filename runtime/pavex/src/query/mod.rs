@@ -6,7 +6,9 @@
 //!
 //! See `/rfc10008.md` at the repository root for the RFC excerpts.
 
-use crate::http::{HeaderMap, HeaderValue, Method, StatusCode};
+use std::str::FromStr;
+
+use crate::http::{HeaderMap, HeaderValue, Method, StatusCode, header::CONTENT_TYPE};
 
 /// Error surfaced by [`validate_content_type`].
 #[derive(Debug, PartialEq, Eq)]
@@ -24,10 +26,25 @@ pub enum ContentTypeError {
 /// > Servers MUST fail the request if the Content-Type request field
 /// > \[HTTP §8.3\] is missing or is inconsistent with the request content.
 pub fn validate_content_type(
-    _headers: &HeaderMap,
-    _body: &[u8],
+    headers: &HeaderMap,
+    body: &[u8],
 ) -> Result<(), ContentTypeError> {
-    todo!("RFC 10008 §2: check Content-Type presence + consistency with body")
+    let Some(raw) = headers.get(CONTENT_TYPE) else {
+        return Err(ContentTypeError::Missing);
+    };
+    let Ok(text) = raw.to_str() else {
+        return Err(ContentTypeError::Mismatch);
+    };
+    let Ok(mime) = mime::Mime::from_str(text) else {
+        return Err(ContentTypeError::Mismatch);
+    };
+    // A non-empty declared Content-Type paired with an empty body is
+    // treated as inconsistent — the header claims content the request
+    // doesn't actually carry.
+    if body.is_empty() && mime.type_() != mime::APPLICATION_OCTET_STREAM.type_() {
+        return Err(ContentTypeError::Mismatch);
+    }
+    Ok(())
 }
 
 /// Build an `Accept-Query` response header value advertising the query
@@ -39,8 +56,15 @@ pub fn validate_content_type(
 /// # Example (per RFC 10008 §3)
 ///
 /// `Accept-Query: "application/jsonpath", application/sql;charset="UTF-8"`
-pub fn accept_query_header(_supported_media_ranges: &[&str]) -> HeaderValue {
-    todo!("RFC 10008 §3: build Accept-Query header from supported media ranges")
+pub fn accept_query_header(supported_media_ranges: &[&str]) -> HeaderValue {
+    // Media types contain `/` which is disallowed in Structured Fields
+    // Tokens, so we emit each entry as a quoted String — always safe.
+    let joined = supported_media_ranges
+        .iter()
+        .map(|r| format!("\"{}\"", r.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(", ");
+    HeaderValue::from_str(&joined).expect("Accept-Query header value must be ASCII")
 }
 
 /// Compute the cache key for a QUERY request, per RFC 10008 §2.7.
@@ -53,11 +77,21 @@ pub fn accept_query_header(_supported_media_ranges: &[&str]) -> HeaderValue {
 /// lookup. Two requests with different content or content-type MUST produce
 /// different keys.
 pub fn cache_key_for(
-    _request_target: &str,
-    _content_type: &HeaderValue,
-    _body: &[u8],
+    request_target: &str,
+    content_type: &HeaderValue,
+    body: &[u8],
 ) -> Vec<u8> {
-    todo!("RFC 10008 §2.7: compose cache key from target + content-type + body")
+    // Deterministic concatenation with 0x00 separators. Any change to
+    // target, content-type, or body produces a different key.
+    let mut key = Vec::with_capacity(
+        request_target.len() + content_type.as_bytes().len() + body.len() + 2,
+    );
+    key.extend_from_slice(request_target.as_bytes());
+    key.push(0);
+    key.extend_from_slice(content_type.as_bytes());
+    key.push(0);
+    key.extend_from_slice(body);
+    key
 }
 
 /// Return the HTTP method a user agent should use when following a redirect
@@ -72,6 +106,10 @@ pub fn cache_key_for(
 ///
 /// > Note that the exceptions for redirecting a POST as a GET request
 /// > after a 301 or 302 response do NOT apply to QUERY requests.
-pub fn redirect_method_for(_status: StatusCode, _original: &Method) -> Method {
-    todo!("RFC 10008 §2.5: 303 downgrades to GET; 301/302/307/308 preserve method")
+pub fn redirect_method_for(status: StatusCode, original: &Method) -> Method {
+    if status == StatusCode::SEE_OTHER {
+        Method::GET
+    } else {
+        original.clone()
+    }
 }
