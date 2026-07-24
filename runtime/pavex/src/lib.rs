@@ -26,6 +26,7 @@ pub mod cookie;
 pub mod error;
 pub mod http;
 pub mod middleware;
+pub mod query;
 pub mod request;
 pub mod response;
 pub mod router;
