@@ -7,7 +7,9 @@
 //! composition, redirect method downgrade), so it warrants a dedicated
 //! surface unlike `get`/`post`/etc.
 
-use crate::http::{HeaderMap, HeaderValue, Method, StatusCode};
+use std::str::FromStr;
+
+use crate::http::{HeaderMap, HeaderValue, Method, StatusCode, header::CONTENT_TYPE};
 
 /// Error surfaced by [`validate_content_type`].
 #[derive(Debug, PartialEq, Eq)]
@@ -22,16 +24,33 @@ pub enum ContentTypeError {
 /// Validate that a QUERY request carries a `Content-Type` header consistent
 /// with the request content.
 pub fn validate_content_type(
-    _headers: &HeaderMap,
-    _body: &[u8],
+    headers: &HeaderMap,
+    body: &[u8],
 ) -> Result<(), ContentTypeError> {
-    todo!()
+    let Some(raw) = headers.get(CONTENT_TYPE) else {
+        return Err(ContentTypeError::Missing);
+    };
+    let Ok(text) = raw.to_str() else {
+        return Err(ContentTypeError::Mismatch);
+    };
+    let Ok(mime) = mime::Mime::from_str(text) else {
+        return Err(ContentTypeError::Mismatch);
+    };
+    if body.is_empty() && mime.type_() != mime::APPLICATION_OCTET_STREAM.type_() {
+        return Err(ContentTypeError::Mismatch);
+    }
+    Ok(())
 }
 
 /// Build an `Accept-Query` response header value advertising the query
 /// media ranges the resource supports.
-pub fn accept_query_header(_supported_media_ranges: &[&str]) -> HeaderValue {
-    todo!()
+pub fn accept_query_header(supported_media_ranges: &[&str]) -> HeaderValue {
+    let joined = supported_media_ranges
+        .iter()
+        .map(|r| format!("\"{}\"", r.replace('"', "\\\"")))
+        .collect::<Vec<_>>()
+        .join(", ");
+    HeaderValue::from_str(&joined).expect("Accept-Query header value must be ASCII")
 }
 
 /// Compute the cache key for a QUERY request. The returned bytes are
@@ -43,16 +62,22 @@ pub fn cache_key_for(
     body: &[u8],
 ) -> Vec<u8> {
     let mut key = Vec::with_capacity(
-        request_target.len() + content_type.as_bytes().len() + body.len(),
+        request_target.len() + content_type.as_bytes().len() + body.len() + 2,
     );
     key.extend_from_slice(request_target.as_bytes());
+    key.push(0);
     key.extend_from_slice(content_type.as_bytes());
+    key.push(0);
     key.extend_from_slice(body);
     key
 }
 
 /// Return the HTTP method a user agent should use when following a redirect
 /// response to a QUERY request.
-pub fn redirect_method_for(_status: StatusCode, _original: &Method) -> Method {
-    todo!()
+pub fn redirect_method_for(status: StatusCode, original: &Method) -> Method {
+    if status == StatusCode::SEE_OTHER {
+        Method::GET
+    } else {
+        original.clone()
+    }
 }
