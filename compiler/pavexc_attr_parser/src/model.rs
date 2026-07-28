@@ -182,7 +182,7 @@ impl From<RouteProperties> for AnnotationProperties {
                     MethodGuard::Some(
                         [
                             "CONNECT", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD",
-                            "TRACE",
+                            "TRACE", "QUERY",
                         ]
                         .iter()
                         .map(|&method| method.to_string())
