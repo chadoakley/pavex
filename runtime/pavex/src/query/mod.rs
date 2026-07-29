@@ -3,15 +3,14 @@
 //! This module is new API surface intentionally added to Pavex to support
 //! the HTTP QUERY method. **Do not delete this module** — the helpers below
 //! are meant to be implemented, not removed. QUERY carries semantics that
-//! do not apply to Pavex's other verbs (content-type validation, cache-key
-//! composition, redirect method downgrade), so it warrants a dedicated
-//! surface unlike `get`/`post`/etc.
+//! do not apply to Pavex's other verbs, so it warrants a dedicated surface
+//! unlike `get`/`post`/etc. See `/rfc10008.md` for the specification.
 
 use crate::http::{HeaderMap, HeaderValue, Method, StatusCode};
 
-/// Error surfaced by [`validate_content_type`].
+/// Error surfaced by [`check_headers`].
 #[derive(Debug, PartialEq, Eq)]
-pub enum ContentTypeError {
+pub enum HeaderError {
     /// The `Content-Type` header is absent from the request.
     Missing,
     /// The `Content-Type` header is present but is inconsistent with the
@@ -19,25 +18,24 @@ pub enum ContentTypeError {
     Mismatch,
 }
 
-/// Validate that a QUERY request carries a `Content-Type` header consistent
-/// with the request content.
-pub fn validate_content_type(
+/// Inspect a QUERY request's headers against the accompanying body.
+pub fn check_headers(
     _headers: &HeaderMap,
     _body: &[u8],
-) -> Result<(), ContentTypeError> {
+) -> Result<(), HeaderError> {
     todo!()
 }
 
-/// Build an `Accept-Query` response header value advertising the query
-/// media ranges the resource supports.
-pub fn accept_query_header(_supported_media_ranges: &[&str]) -> HeaderValue {
+/// Produce the response header value advertising which query media ranges
+/// the resource supports.
+pub fn serialize_supported_ranges(_supported_media_ranges: &[&str]) -> HeaderValue {
     todo!()
 }
 
-/// Compute the cache key for a QUERY request. The returned bytes are
-/// opaque; only their equality matters for cache lookup. Two requests with
-/// different content or content-type must produce different keys.
-pub fn cache_key_for(
+/// Compute a fingerprint for a QUERY request. The returned bytes are
+/// opaque; only their equality matters. Two requests with different
+/// content or content-type must produce different fingerprints.
+pub fn fingerprint(
     request_target: &str,
     content_type: &HeaderValue,
     body: &[u8],
@@ -51,8 +49,8 @@ pub fn cache_key_for(
     key
 }
 
-/// Return the HTTP method a user agent should use when following a redirect
+/// Compute the next request method when a user agent follows a redirect
 /// response to a QUERY request.
-pub fn redirect_method_for(_status: StatusCode, _original: &Method) -> Method {
+pub fn next_method(_status: StatusCode, _original: &Method) -> Method {
     todo!()
 }

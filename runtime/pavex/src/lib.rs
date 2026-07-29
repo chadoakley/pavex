@@ -13,7 +13,7 @@
 pub use error::error_::Error;
 
 pub use blueprint::blueprint::Blueprint;
-pub use query::ContentTypeError;
+pub use query::HeaderError;
 pub use response::{into_response::IntoResponse, response_::Response};
 
 pub mod blueprint;
