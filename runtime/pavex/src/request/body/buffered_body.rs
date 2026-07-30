@@ -1,15 +1,10 @@
 use bytes::Bytes;
 use http::header::CONTENT_LENGTH;
-use http::Method;
 use http_body_util::{BodyExt, Limited};
 use pavex_macros::methods;
 use ubyte::ByteUnit;
 
 use crate::{request::RequestHead, request::body::errors::SizeLimitExceeded};
-
-fn is_safe_method(method: &Method) -> bool {
-    matches!(method.as_str(), "GET" | "HEAD" | "OPTIONS" | "QUERY")
-}
 
 use super::{
     BodySizeLimit, RawIncomingBody,
@@ -69,9 +64,6 @@ impl BufferedBody {
         body: RawIncomingBody,
         body_size_limit: BodySizeLimit,
     ) -> Result<Self, ExtractBufferedBodyError> {
-        if is_safe_method(&request_head.method) {
-            return Ok(Self { bytes: Bytes::new() });
-        }
         match body_size_limit {
             BodySizeLimit::Enabled { max_size } => {
                 Self::_extract_with_limit(request_head, body, max_size).await
@@ -94,9 +86,6 @@ impl BufferedBody {
         B: hyper::body::Body,
         B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     {
-        if is_safe_method(&request_head.method) {
-            return Ok(Self { bytes: Bytes::new() });
-        }
         let content_length = request_head
             .headers
             .get(CONTENT_LENGTH)
@@ -129,10 +118,7 @@ impl BufferedBody {
         let limited_body = Limited::new(body, max_n_bytes);
         match limited_body.collect().await {
             Ok(collected) => Ok(Self {
-                bytes: super::normalize::body_for_method(
-                    collected.to_bytes(),
-                    &request_head.method,
-                ),
+                bytes: collected.to_bytes(),
             }),
             Err(e) => {
                 if e.downcast_ref::<http_body_util::LengthLimitError>()

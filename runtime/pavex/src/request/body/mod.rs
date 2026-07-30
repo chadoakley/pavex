@@ -12,6 +12,5 @@ mod buffered_body;
 pub mod errors;
 mod json;
 mod limit;
-mod normalize;
 mod raw_body;
 mod url_encoded;
